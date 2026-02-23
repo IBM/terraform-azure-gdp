@@ -1,0 +1,38 @@
+{
+  "central_managers": [
+    {
+      "vm_name": "cm01",
+      "system_hostname": "cm01",
+      "instance_type": "Standard_D8s_v3",
+      "network_interface_ip": "10.0.0.10",
+      "system_domain": "guard.internal",
+      "network_interface_mask": "/24",
+      "network_routes_defaultroute": "10.0.0.1",
+      "network_resolvers1": "168.63.129.16",
+      "network_resolvers2": "1.1.1.1",
+      "system_clock_timezone": "America/New_York",
+      "guardium_cli_default_password": "guardium",
+      "guardium_final_pw": "<Cutomer-Password>",
+      "guardium_shared_secret": "guard",
+      "guardium_central_manager_ip": "10.0.0.10",
+      "guardium_license_key": "<Cutomer-License>"
+    },
+    {
+      "vm_name": "cm02",
+      "system_hostname": "cm02",
+      "instance_type": "Standard_D8s_v3",
+      "network_interface_ip": "10.0.0.11",
+      "system_domain": "guard.internal",
+      "network_interface_mask": "/24",
+      "network_routes_defaultroute": "10.0.0.1",
+      "network_resolvers1": "168.63.129.16",
+      "network_resolvers2": "1.1.1.1",
+      "system_clock_timezone": "America/New_York",
+      "guardium_cli_default_password": "guardium",
+      "guardium_final_pw": "<Cutomer-Password>",
+      "guardium_shared_secret": "guard",
+      "guardium_central_manager_ip": "10.0.0.10",
+      "guardium_license_key": "<Customer-License>"
+    }
+  ]
+}
