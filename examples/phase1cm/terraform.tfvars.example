@@ -1,0 +1,47 @@
+#
+# Copyright (c) IBM Corp. 2026
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# Azure Authentication (update with your values)
+subscription_id = "your-subscription-id"
+tenant_id      = "your-tenant-id"  
+client_id      = "your-client-id"
+client_secret  = "your-client-secret"
+
+# Infrastructure Configuration
+location            = "East US"
+resource_group_name = "IBMGuardium"
+
+# Networking Configuration
+vnet_name               = "guardium-vnet"
+vnet_address_space      = ["10.0.0.0/16"]
+subnet_name             = "guardium-subnet"
+subnet_address_prefixes = ["10.0.0.0/24"]
+nsg_name               = "guardium-nsg"
+
+# Central Manager Configuration - use the local file
+cm_instances_json_path = "central_manager_config.json"
+
+
+# Gaurdium Azure Image:
+vm_plan = {
+  name      = "ibm-security-guardium-aggregator"
+  publisher = "ibm"
+  product   = "ibm-security-guardium-multi-cloud"
+}
+
+vm_image = {
+  publisher = "ibm"
+  offer     = "ibm-security-guardium-multi-cloud"
+  sku       = "ibm-security-guardium-aggregator"
+  version   = "12.1.0"
+}
+
+# Tags
+tags = {
+  project     = "guardium"
+  environment = "production"
+  managed_by  = "terraform"
+  phase       = "1"
+}

@@ -1,0 +1,81 @@
+#
+# Copyright (c) IBM Corp. 2026
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# phase0bastion/terraform.tfvars
+# Configuration for Phase 0: Bastion Host and Base Infrastructure
+
+# Azure Authentication (update with your values)
+subscription_id = "your-subscription-id"
+tenant_id      = "your-tenant-id"  
+client_id      = "your-client-id"
+client_secret  = "your-client-secret"
+
+# Infrastructure Configuration
+location            = "East US"
+resource_group_name = "IBMGuardium"
+
+# Networking Configuration
+vnet_name               = "guardium-vnet"
+vnet_address_space      = ["10.0.0.0/16"]
+subnet_name             = "guardium-subnet"
+subnet_address_prefixes = ["10.0.0.0/24"]
+nsg_name               = "guardium-nsg"
+
+# Bastion Host Configuration
+bastion_name                = "guardium-bastion"
+bastion_vm_size            = "Standard_B2s"
+bastion_private_ip         = "10.0.1.10"
+management_subnet_name     = "management-subnet"
+management_subnet_prefixes = ["10.0.1.0/24"]
+
+# Security Configuration - Allowed source IPs
+allowed_source_ips = [
+  "129.41.47.3/32",
+  "129.41.47.4/32",
+  "170.225.223.17/32"
+]
+
+# SSH Configuration
+admin_username = "azureuser"
+# SSH Public Key - REPLACE with your actual public key
+#ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-public-key-here"
+# SSH Private Key - REPLACE with your actual private key
+# NOTE: For production, use Azure Key Vault or other secure storage
+#ssh_private_key = <<-EOT
+#-----BEGIN OPENSSH PRIVATE KEY-----
+#your-private-key-content-here
+#-----END OPENSSH PRIVATE KEY-----
+#EOT
+
+
+# SSH Public Key - REPLACE with your actual public key
+###ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-public-key-here"
+
+# SSH Private Key - REPLACE with your actual private key
+# NOTE: For production, use Azure Key Vault or other secure storage
+###ssh_private_key = <<-EOT
+##-----BEGIN OPENSSH PRIVATE KEY-----
+#your-private-key-content-here
+###-----END OPENSSH PRIVATE KEY-----
+##EOT
+
+
+# Tags
+tags = {
+  project     = "guardium"
+  environment = "production"
+  managed_by  = "terraform"
+  phase       = "0"
+  mode        = "private"
+}
+
+# IMPORTANT NOTES:
+# 1. Replace ssh_public_key with your actual SSH public key
+# 2. Replace ssh_private_key with your actual SSH private key
+# 3. For production environments, store SSH keys in Azure Key Vault
+# 4. The bastion host will be accessible only from the specified IPs:
+#    - 129.41.47.3
+#    - 129.41.47.4
+# 5. All Guardium instances will be private IP only, accessible via bastion

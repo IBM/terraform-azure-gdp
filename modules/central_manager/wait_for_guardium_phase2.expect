@@ -1,0 +1,217 @@
+#!/usr/bin/expect -f
+
+#
+# Copyright (c) IBM Corp. 2026
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# modules/central_manager/wait_for_guardium_phase2.expect
+# Phase 2: Additional Guardium configuration after Phase 1 completion
+
+# Global timeout (in seconds)
+set timeout 600
+
+# Arguments: IP, final password, shared_secret
+set ip            [lindex $argv 0]
+set final_pw      [lindex $argv 1]
+set shared_secret [lindex $argv 2]
+
+# -----------------------------------------------------------------------------
+# Logging to logs/ folder next to this script
+# -----------------------------------------------------------------------------
+# Directory of this script
+set script_dir [file dirname [info script]]
+
+# logs directory: modules/central_manager/logs
+set log_dir    [file join $script_dir "logs"]
+file mkdir $log_dir
+
+# Log file name: guardium_phase2_<IP>_<timestamp>.log
+set timestamp  [clock format [clock seconds] -format "%Y%m%d_%H%M%S"]
+set log_path   [file join $log_dir [format "guardium_phase2_%s_%s.log" $ip $timestamp]]
+
+# Start logging (append mode, just in case)
+log_file -a $log_path
+
+puts "Logging Expect session to: $log_path"
+
+# -----------------------------------------------------------------------------
+# Debug controls
+# -----------------------------------------------------------------------------
+# While debugging, keep this 1. For production you can set to 0.
+exp_internal 1
+log_user 1
+
+# Helper: wait for CLI prompt like "cm01.guard.internal>" (allows ANSI junk)
+proc wait_for_prompt {} {
+    expect {
+        -re {[A-Za-z0-9_.-]+>} {
+            # Matches e.g. cm01.guard.internal>
+            return 0
+        }
+        timeout {
+            puts "Timeout waiting for CLI prompt after command"
+            return 1
+        }
+        eof {
+            puts "Connection closed while waiting for CLI prompt"
+            return 2
+        }
+    }
+}
+
+puts "Starting Guardium Phase 2 configuration..."
+puts "Target IP: $ip"
+
+# 1) Initial SSH connection and login
+puts "Connecting to $ip via SSH..."
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60 cli@$ip
+
+expect {
+    -re {[Pp]assword:} {
+        puts "Password prompt detected, sending password..."
+        send -- "$final_pw\r"
+        exp_continue
+    }
+    -re {Last login:} {
+        puts "Login banner detected..."
+        exp_continue
+    }
+    -re {IBM Guardium, Command Line Interface \(CLI\)} {
+        puts "Guardium CLI banner detected..."
+        exp_continue
+    }
+    -re {Permission denied} {
+        puts "SSH authentication failed (Permission denied). Check the password / user."
+        exit 1
+    }
+    -re {WARNING:} {
+        exp_continue
+    }
+    -re {[A-Za-z0-9_.-]+>} {
+        puts "Successfully connected to Guardium CLI"
+    }
+    timeout {
+        puts "Timeout waiting for initial CLI prompt"
+        exit 1
+    }
+    eof {
+        puts "Connection failed (EOF from SSH) during initial login"
+        exit 1
+    }
+}
+
+# 2) show license
+puts "Checking license status (show license)..."
+send -- "show license\r"
+set rc [wait_for_prompt]
+if {$rc != 0} {
+    puts "Error while running 'show license' (rc=$rc)"
+    exit 1
+}
+
+# 3) store system shared secret
+puts "Setting shared secret..."
+send -- "store system shared secret $shared_secret\r"
+sleep 10
+set rc [wait_for_prompt]
+if {$rc != 0} {
+    puts "Error while running 'store system shared secret' (rc=$rc)"
+    exit 1
+}
+
+# 4) store unit type manager – this may restart services and drop SSH
+puts "Setting unit type to manager (this may restart services and drop SSH)..."
+send -- "store unit type manager\r"
+sleep 10
+
+expect {
+    -re {[A-Za-z0-9_.-]+>} {
+        puts "Unit type set to manager and CLI prompt is still available."
+    }
+    timeout {
+        puts "No prompt received after 'store unit type manager'. Assuming unit is restarting and session may be down."
+    }
+    eof {
+        puts "SSH session closed after changing unit type (expected behavior)."
+    }
+}
+
+# 5) Reconnect after unit type change
+puts "Waiting 60 seconds for Guardium unit to restart after unit type change..."
+sleep 60
+
+set max_retries 10
+set connected 0
+
+for {set i 1} {$i <= $max_retries} {incr i} {
+    puts "Reconnect attempt $i of $max_retries..."
+    spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60 cli@$ip
+
+    expect {
+        -re {[Pp]assword:} {
+            puts "Password prompt detected on reconnect, sending password..."
+            send -- "$final_pw\r"
+            exp_continue
+        }
+        -re {Last login:} {
+            puts "Login banner detected on reconnect..."
+            exp_continue
+        }
+        -re {IBM Guardium, Command Line Interface \(CLI\)} {
+            puts "Guardium CLI banner detected on reconnect..."
+            exp_continue
+        }
+        -re {Permission denied} {
+            puts "SSH authentication failed (Permission denied) on reconnect."
+            exit 1
+        }
+        -re {WARNING:} {
+            exp_continue
+        }
+        -re {[A-Za-z0-9_.-]+>} {
+            puts "Successfully reconnected to Guardium CLI"
+            set connected 1
+        }
+        timeout {
+            puts "Timeout waiting for CLI prompt on reconnect attempt $i"
+        }
+        eof {
+            puts "Connection failed (EOF from SSH) on reconnect attempt $i"
+        }
+    }
+
+    if {$connected} {
+        break
+    } else {
+        puts "Reconnect attempt $i failed; sleeping 30 seconds before next attempt..."
+        sleep 30
+    }
+}
+
+if {!$connected} {
+    puts "Failed to reconnect to Guardium after changing unit type."
+    exit 1
+}
+
+# 6) Verify unit type
+puts "Verifying unit type (show unit type)..."
+send -- "show unit type\r"
+sleep 10
+set rc [wait_for_prompt]
+if {$rc != 0} {
+    puts "Error while running 'show unit type' (rc=$rc)"
+    exit 1
+}
+
+# 7) Quit CLI
+puts "Phase 2 configuration completed. Exiting..."
+send -- "quit\r"
+expect eof
+
+puts "Guardium Phase 2 configuration completed successfully"
+puts "Log saved to: $log_path"
+
+# Stop logging and exit
+log_file
+exit 0
